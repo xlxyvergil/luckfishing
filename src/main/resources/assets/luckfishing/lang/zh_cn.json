@@ -1,0 +1,15 @@
+{
+  "tooltip.luckfishing.stage": "当前阶段: %s",
+  "tooltip.luckfishing.stage.none": "未强化",
+  "tooltip.luckfishing.chance": "mobs几率: %s",
+  "jei.luckfishing.category": "钓鱼池",
+  "jei.luckfishing.tier": "鱼竿强化等级:",
+  "jei.luckfishing.upgrade_item": "鱼竿强化道具:",
+  "jei.luckfishing.tier_chance": "当前等级出怪率:",
+  "jei.luckfishing.weight": "权重:",
+  "jei.luckfishing.unupgraded_category": "未强化",
+  "jei.luckfishing.unupgraded_hint": "未强化的鱼竿可钓取所有已配置的实体",
+  "command.luckfishing.reload.done": "钓鱼池已重载，模型尺寸新增 %s 个实体",
+  "command.luckfishing.reload.no_level": "需要先进入世界才能重载",
+  "luckfishing.message.hooked": "%s 钓上了 %s"
+}
