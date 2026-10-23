@@ -1,0 +1,15 @@
+{
+  "tooltip.luckfishing.stage": "Stage: %s",
+  "tooltip.luckfishing.stage.none": "Not upgraded",
+  "tooltip.luckfishing.chance": "Mob chance: %s",
+  "jei.luckfishing.category": "Fishing Pool",
+  "jei.luckfishing.tier": "Rod upgrade tier:",
+  "jei.luckfishing.upgrade_item": "Upgrade item:",
+  "jei.luckfishing.tier_chance": "Tier spawn chance:",
+  "jei.luckfishing.weight": "Weight:",
+  "jei.luckfishing.unupgraded_category": "Unupgraded",
+  "jei.luckfishing.unupgraded_hint": "An unupgraded rod can catch every configured mob",
+  "command.luckfishing.reload.done": "Fishing pool reloaded, %s model sizes added",
+  "command.luckfishing.reload.no_level": "Join a world first to reload",
+  "luckfishing.message.hooked": "%s fished up %s"
+}
