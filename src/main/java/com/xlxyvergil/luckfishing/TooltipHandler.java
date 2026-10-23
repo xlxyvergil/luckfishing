@@ -6,11 +6,14 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
+
+import javax.annotation.Nullable;
 
 /** 显示鱼竿当前的强化阶段与出怪概率，仅在客户端绘制。 */
 @Mod.EventBusSubscriber(modid = Constants.MOD_ID, value = Dist.CLIENT)
@@ -28,23 +31,22 @@ public class TooltipHandler {
     @SubscribeEvent
     public static void onItemTooltip(ItemTooltipEvent event) {
 
+        final ItemStack stack = event.getItemStack();
         final UpgradeConfig config = clientConfig();
 
-        if (config == null || !config.isFishingRod(event.getItemStack())) {
+        if (config == null || !config.isFishingRod(stack)) {
 
             return;
         }
 
-        final ResourceLocation appliedUpgrade = UpgradeConfig.getAppliedUpgrade(event.getItemStack());
+        // 只负责「读 + 显示」：竿上记了什么就显示什么，配置算出来的概率就显示什么。
+        final ResourceLocation appliedUpgrade = UpgradeConfig.getAppliedUpgrade(stack);
 
-        event.getToolTip().add(Component.translatable(STAGE_KEY, stageName(appliedUpgrade, config)).withStyle(ChatFormatting.GRAY));
+        event.getToolTip().add(Component.translatable(STAGE_KEY, stageName(appliedUpgrade)).withStyle(ChatFormatting.GRAY));
         event.getToolTip().add(Component.translatable(CHANCE_KEY, config.chanceOf(appliedUpgrade)).withStyle(ChatFormatting.GRAY));
     }
 
-    /**
-     * 优先用服务端同步来的配置，保证 tooltip 与服务端实际判定一致；
-     * 还没收到同步时退回本地配置（单机里两者本就是同一份）。
-     */
+    /** 服务端同步来的配置优先，保证 tooltip 与服务端实际判定一致；还没有同步时退回本地配置。 */
     private static UpgradeConfig clientConfig() {
 
         final UpgradeConfig synced = SyncedConfig.get();
@@ -53,18 +55,17 @@ public class TooltipHandler {
     }
 
     /**
-     * 强化以物品 id 存储，这里用物品自身的语言键取名；未强化时返回未强化提示。
+     * 强化以物品 id 存储：有标记就显示该道具的名字（未注册的物品退回显示 id），没有标记显示未强化。
      */
-    private static Component stageName(ResourceLocation appliedUpgrade, UpgradeConfig config) {
+    private static Component stageName(@Nullable ResourceLocation appliedUpgrade) {
 
-        if (!config.hasUpgrade(appliedUpgrade)) {
+        if (appliedUpgrade == null) {
 
             return Component.translatable(STAGE_NONE_KEY);
         }
 
         final Item upgradeItem = ForgeRegistries.ITEMS.getValue(appliedUpgrade);
 
-        // 手写配置可能指向未注册的物品，此时只能显示 id。
         return upgradeItem == null
                 ? Component.literal(appliedUpgrade.toString())
                 : Component.translatable(upgradeItem.getDescriptionId());

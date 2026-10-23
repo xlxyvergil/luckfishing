@@ -2,6 +2,9 @@ package com.xlxyvergil.luckfishing;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,4 +22,19 @@ public class Constants {
 
     /** 网络同步使用的 GSON，字段与配置文件一致但不做缩进，减小包体。 */
     public static final Gson COMPACT_GSON = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+
+    /** 物品上记录的强化 id 原文（不解析），没有时为 null；排障时用来区分「没数据」和「数据解析不出来」。 */
+    @Nullable
+    public static String getRawUpgrade(ItemStack stack) {
+
+        final CompoundTag tag = stack.getTag();
+
+        if (tag == null || !tag.contains(UPGRADE_TAG)) {
+
+            return null;
+        }
+
+        return tag.getString(UPGRADE_TAG);
+    }
 }
+

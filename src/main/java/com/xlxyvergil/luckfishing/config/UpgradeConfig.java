@@ -12,11 +12,14 @@ import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraftforge.common.ToolActions;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +80,13 @@ public class UpgradeConfig {
     @Expose
     private Map<String, Upgrade> upgrades = new TreeMap<>();
 
+    /**
+     * 读取配置文件是否失败（语法错、编码错、被占用等）。
+     * <p>为 true 时绝不再回写：否则一次读失败就会把用户手写的强化条目覆盖成只剩默认池，
+     * 之后所有已升级的鱼竿都会变成「配置里查不到该强化」而退回未强化池——这正是"未知强化"的主要来源。
+     */
+    private transient boolean readFailed;
+
     /** 该物品是否是可强化的鱼竿。 */
     public boolean isFishingRod(ItemStack stack) {
 
@@ -86,6 +96,13 @@ public class UpgradeConfig {
         }
 
         if (stack.getItem() instanceof FishingRodItem || stack.is(Items.FISHING_ROD)) {
+
+            return true;
+        }
+
+        // 原版的抛竿判定本身就是「物品能力」：Forge 的 FishingHook#shouldStopFishing 用的正是
+        // ToolActions.FISHING_ROD_CAST。只认 FishingRodItem 会漏掉只声明了工具能力的模组鱼竿。
+        if (stack.canPerformAction(ToolActions.FISHING_ROD_CAST)) {
 
             return true;
         }
@@ -167,11 +184,17 @@ public class UpgradeConfig {
 
     /**
      * 抽取本次出怪：未强化鱼竿取所有等级的池并用 {@link #UNUPGRADED_CHANCE}，已强化鱼竿取等级 ≤ 自身的池并用该等级概率。
+     * 鱼竿上的强化在配置里没有对应池子时返回 null（调用方负责报错），不再退回未强化池。
      * 返回抽中的实体及其 NBT，不出怪时为 null。
      */
     public Pick pickMob(ResourceLocation appliedUpgrade, float luck, RandomSource random) {
 
-        // 配置里没有的强化按未强化处理，避免强化道具被移除后鱼竿没有池可用。
+        // 有强化但配置里没有这个池子：没有可用的池子，直接不抽。
+        if (appliedUpgrade != null && !this.upgrades.containsKey(appliedUpgrade.toString())) {
+
+            return null;
+        }
+
         final Upgrade own = appliedUpgrade == null ? null : this.upgrades.get(appliedUpgrade.toString());
         final int rodTier = own == null ? Integer.MAX_VALUE : own.getTier();
         final double chance = own == null ? UNUPGRADED_CHANCE : chanceFor(rodTier);
@@ -323,7 +346,7 @@ public class UpgradeConfig {
 
     /**
      * 重新读取配置文件，使道具和池的改动下次钓获即生效。
-     * 只读文件，不重扫注册表也不回写；文件无法解析时视为空池。
+     * 只读文件，不重扫注册表也不回写；文件读不出来时保留当前配置，而不是把池子清空。
      */
     public void reload() {
 
@@ -335,6 +358,12 @@ public class UpgradeConfig {
         final UpgradeConfig loaded = new UpgradeConfig();
         loaded.configFile = this.configFile;
         loaded.readFromDisk();
+
+        if (loaded.readFailed) {
+
+            Constants.LOG.warn("Reload skipped: '{}' could not be parsed; keeping the previously loaded upgrade pool.", this.configFile);
+            return;
+        }
 
         this.rodTag = loaded.rodTag;
         this.rods = loaded.rods;
@@ -366,7 +395,10 @@ public class UpgradeConfig {
         }
     }
 
-    /** 把配置文件里的值覆盖到默认值上，文件里没有的强化保留，避免手写条目被丢弃。 */
+    /**
+     * 把配置文件里的值覆盖到默认值上，文件里没有的强化保留，避免手写条目被丢弃。
+     * 读失败时置 {@link #readFailed} 并报错：绝不静默当成空池，因为调用方随后会回写文件。
+     */
     private void readFromDisk() {
 
         if (this.configFile == null || !this.configFile.exists()) {
@@ -374,7 +406,7 @@ public class UpgradeConfig {
             return;
         }
 
-        try (FileReader reader = new FileReader(this.configFile)) {
+        try (Reader reader = Files.newBufferedReader(this.configFile.toPath(), StandardCharsets.UTF_8)) {
 
             final UpgradeConfig loaded = Constants.GSON.fromJson(reader, UpgradeConfig.class);
 
@@ -409,13 +441,17 @@ public class UpgradeConfig {
             }
         }
 
-        catch (Exception ignored) {
+        catch (Exception exception) {
 
-            // 文件缺失、读不到或格式错误时按空池处理。
+            // 读失败绝不当成空池：调用方随后会回写，一旦静默就会把用户配置抹成默认池，
+            // 那之后所有带自定义强化的鱼竿都会变成「未知强化」并按未强化池判定。
+            this.readFailed = true;
+            Constants.LOG.error("Failed to read the upgrade config at '{}'. The file is left untouched and the built-in defaults are used for this session."
+                    + " Rods carrying an upgrade defined only in that file will be treated as unupgraded until the file is fixed.", this.configFile, exception);
         }
     }
 
-    /** 把当前配置写回磁盘，配置目录不存在时自动创建。 */
+    /** 把当前配置写回磁盘，配置目录不存在时自动创建；读取失败时不回写，避免覆盖用户配置。 */
     private void writeToDisk() {
 
         if (this.configFile == null) {
@@ -423,16 +459,22 @@ public class UpgradeConfig {
             return;
         }
 
+        if (this.readFailed) {
+
+            Constants.LOG.warn("Not writing '{}' back: the file could not be read, so rewriting it would drop the upgrades defined in it.", this.configFile);
+            return;
+        }
+
         this.configFile.getParentFile().mkdirs();
 
-        try (FileWriter writer = new FileWriter(this.configFile)) {
+        try (Writer writer = Files.newBufferedWriter(this.configFile.toPath(), StandardCharsets.UTF_8)) {
 
             Constants.GSON.toJson(this, writer);
         }
 
-        catch (Exception ignored) {
+        catch (Exception exception) {
 
-            // 文件写不进去时无能为力。
+            Constants.LOG.warn("Failed to write the upgrade config at '{}'.", this.configFile, exception);
         }
     }
 
