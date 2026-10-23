@@ -81,6 +81,12 @@ neoForge {
                 programArgument '--quickPlaySingleplayer'
                 programArgument project.quickPlayWorld
             }
+            // Dev convenience: `gradlew runClient -PquickPlayServer=localhost:25566` joins a dev server
+            // straight away, which is how the client/server split gets exercised without the menus.
+            if (project.hasProperty('quickPlayServer')) {
+                programArgument '--quickPlayMultiplayer'
+                programArgument project.quickPlayServer
+            }
         }
 
         server {
