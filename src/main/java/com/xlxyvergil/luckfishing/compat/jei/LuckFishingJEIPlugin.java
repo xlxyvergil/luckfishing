@@ -1,7 +1,7 @@
 package com.xlxyvergil.luckfishing.compat.jei;
 
 import com.xlxyvergil.luckfishing.Constants;
-import com.xlxyvergil.luckfishing.LuckFishing;
+import com.xlxyvergil.luckfishing.client.ActiveConfig;
 import com.xlxyvergil.luckfishing.config.UpgradeConfig;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -73,13 +73,12 @@ public class LuckFishingJEIPlugin implements IModPlugin {
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        final UpgradeConfig config = LuckFishing.getUpgradeConfig();
+        final UpgradeConfig config = ActiveConfig.get();
         if (config == null) {
             return;
         }
 
         // 配置只在加载与 /luckf reload 时读盘，这里直接用内存中的配置建配方列表。
-
         final List<FishingLootRecipe> recipes = new ArrayList<>();
         for (Map.Entry<String, UpgradeConfig.Upgrade> entry : config.getUpgrades().entrySet()) {
             final ResourceLocation upgradeId = ResourceLocation.tryParse(entry.getKey());
@@ -151,7 +150,7 @@ public class LuckFishingJEIPlugin implements IModPlugin {
         registration.addRecipeCatalyst(new ItemStack(Items.FISHING_ROD), FISHING_LOOT_TYPE);
         registration.addRecipeCatalyst(new ItemStack(Items.FISHING_ROD), UNUPGRADED_TYPE);
 
-        final UpgradeConfig config = LuckFishing.getUpgradeConfig();
+        final UpgradeConfig config = ActiveConfig.get();
         if (config == null) {
             return;
         }

@@ -16,6 +16,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -23,6 +24,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.ItemFishedEvent;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = Constants.MOD_ID)
@@ -31,8 +33,10 @@ public class FishingHandler {
     @SubscribeEvent
     public static void onItemFished(ItemFishedEvent event) {
 
+        final Player fisher = event.getEntity();
+
         // 判定钓上实体时清空鱼获。
-        if (trySpawn(event.getEntity(), event.getEntity().getMainHandItem())) {
+        if (trySpawn(fisher, fisher.getMainHandItem())) {
 
             event.getDrops().clear();
         }
@@ -58,15 +62,41 @@ public class FishingHandler {
 
         if (!config.isFishingRod(rod)) {
 
+            Constants.LOG.debug("[luckfishing] '{}' finished fishing but the item in hand ('{}') is not treated as a fishing rod; nothing will spawn.",
+                    fisher.getName().getString(), BuiltInRegistries.ITEM.getKey(rod.getItem()));
             return false;
         }
 
-        final UpgradeConfig.Pick pick = config.pickMob(UpgradeConfig.getAppliedUpgrade(rod), luckOf(fisher), fisher.level().getRandom());
+        final ResourceLocation appliedUpgrade = UpgradeConfig.getAppliedUpgrade(rod);
+
+        // 竿上写着某个强化，配置里却没有对应的池子：报错并跳过这次抽取。
+        // 不退回未强化池——那会让「配置错了」表现得和「没强化」一模一样。
+        if (appliedUpgrade != null && !config.hasUpgrade(appliedUpgrade)) {
+
+            Constants.LOG.error("The rod held by '{}' carries upgrade '{}' but the config has no pool for it; skipping this catch. Fix config/{}.json.",
+                    fisher.getName().getString(), appliedUpgrade, Constants.MOD_ID);
+            return false;
+        }
+
+        final UpgradeConfig.Pick pick = config.pickMob(appliedUpgrade, luckOf(fisher), fisher.level().getRandom());
 
         if (pick == null) {
 
             return false;
         }
+
+        // 逐次记录「服务器这边真正读到的鱼竿数据」，默认只进 debug.log；
+        // 要在不钓鱼的情况下查看，用服务端命令 /luckfishing diagnose [玩家]。
+        // 缺值一律打印成 <无>，避免 SLF4J 把 Java null 印成 "null"、看起来像有个叫 null 的强化。
+        final String rawUpgrade = Constants.getRawUpgrade(rod);
+        Constants.LOG.debug("[luckfishing] '{}' rod='{}' rawUpgrade='{}' applied='{}' tier={} chance={} picked='{}'",
+                fisher.getName().getString(),
+                BuiltInRegistries.ITEM.getKey(rod.getItem()),
+                rawUpgrade == null ? "<无>" : rawUpgrade,
+                appliedUpgrade == null ? "<无>" : appliedUpgrade.toString(),
+                config.tierOf(appliedUpgrade),
+                String.format(Locale.ROOT, "%.2f", config.chanceOf(appliedUpgrade)),
+                pick.getId());
 
         final ResourceLocation mobId = pick.getId();
 

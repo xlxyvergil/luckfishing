@@ -5,7 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.xlxyvergil.luckfishing.Constants;
-import com.xlxyvergil.luckfishing.LuckFishing;
+import com.xlxyvergil.luckfishing.client.ActiveConfig;
 import com.xlxyvergil.luckfishing.config.UpgradeConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
@@ -136,7 +136,7 @@ public final class EntitySizeCache {
 
     /** 测量尚未缓存的实体尺寸，用于运行中改配置；配置由调用方（{@code /luckf reload}）先行重读，返回新测量的实体数量。 */
     public static int refresh() {
-        final UpgradeConfig config = LuckFishing.getUpgradeConfig();
+        final UpgradeConfig config = ActiveConfig.get();
         if (config == null) {
             return 0;
         }

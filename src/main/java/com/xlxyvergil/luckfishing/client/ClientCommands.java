@@ -4,6 +4,7 @@ import com.xlxyvergil.luckfishing.Constants;
 import com.xlxyvergil.luckfishing.LuckFishing;
 import com.xlxyvergil.luckfishing.compat.jei.EntitySizeCache;
 import com.xlxyvergil.luckfishing.config.UpgradeConfig;
+import com.xlxyvergil.luckfishing.network.SyncedConfig;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
@@ -44,6 +45,13 @@ public final class ClientCommands {
         final UpgradeConfig config = LuckFishing.getUpgradeConfig();
         if (config != null) {
             config.reload();
+
+            // 单机时客户端与主机共用同一份配置，重读后必须把展示用的副本一起刷新，
+            // 否则 tooltip 与 JEI 会一直显示重载前的旧池子。
+            // 多人游戏里副本是服务端下发的权威内容，不能用本地文件覆盖。
+            if (mc.getSingleplayerServer() != null) {
+                SyncedConfig.accept(config.toJson());
+            }
         }
 
         final int added = EntitySizeCache.refresh();

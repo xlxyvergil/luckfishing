@@ -16,8 +16,10 @@ import net.neoforged.neoforge.common.ItemAbilities;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +82,12 @@ public class UpgradeConfig {
     /** 以强化道具 id 为键的强化配置。 */
     @Expose
     private Map<String, Upgrade> upgrades = new TreeMap<>();
+
+    /**
+     * 读取配置文件是否失败（语法错、编码错、被占用等）。
+     * <p>为 true 时不再回写文件：否则一次读失败就会把用户手写的强化条目覆盖成只剩默认池。
+     */
+    private transient boolean readFailed;
 
     /** 该物品是否是可强化的鱼竿。 */
     public boolean isFishingRod(ItemStack stack) {
@@ -177,7 +185,12 @@ public class UpgradeConfig {
     @Nullable
     public Pick pickMob(@Nullable ResourceLocation appliedUpgrade, float luck, RandomSource random) {
 
-        // 配置里没有的强化按未强化处理，避免强化道具被移除后鱼竿没有池可用。
+        // 有强化但配置里没有这个池子：没有可用的池子，直接不抽（调用方负责报错）。
+        if (appliedUpgrade != null && !this.upgrades.containsKey(appliedUpgrade.toString())) {
+
+            return null;
+        }
+
         final Upgrade own = appliedUpgrade == null ? null : this.upgrades.get(appliedUpgrade.toString());
         final int rodTier = own == null ? Integer.MAX_VALUE : own.getTier();
         final double chance = own == null ? UNUPGRADED_CHANCE : chanceFor(rodTier);
@@ -329,7 +342,7 @@ public class UpgradeConfig {
 
     /**
      * 重新读取配置文件，使道具和池的改动下次钓获即生效。
-     * 只读文件，不重扫注册表也不回写；文件无法解析时视为空池。
+     * 只读文件，不重扫注册表也不回写；文件读不出来时保留当前配置，而不是把池子清空。
      */
     public void reload() {
 
@@ -341,6 +354,12 @@ public class UpgradeConfig {
         final UpgradeConfig loaded = new UpgradeConfig();
         loaded.configFile = this.configFile;
         loaded.readFromDisk();
+
+        if (loaded.readFailed) {
+
+            Constants.LOG.warn("Reload skipped: '{}' could not be parsed; keeping the previously loaded upgrade pool.", this.configFile);
+            return;
+        }
 
         this.rodTag = loaded.rodTag;
         this.rods = loaded.rods;
@@ -380,7 +399,7 @@ public class UpgradeConfig {
             return;
         }
 
-        try (FileReader reader = new FileReader(this.configFile)) {
+        try (Reader reader = Files.newBufferedReader(this.configFile.toPath(), StandardCharsets.UTF_8)) {
 
             final UpgradeConfig loaded = Constants.GSON.fromJson(reader, UpgradeConfig.class);
 
@@ -415,13 +434,16 @@ public class UpgradeConfig {
             }
         }
 
-        catch (Exception ignored) {
+        catch (Exception exception) {
 
-            // 文件缺失、读不到或格式错误时按空池处理。
+            // 读失败绝不当成空池：调用方随后会回写，一旦静默就会把用户配置抹成默认池。
+            this.readFailed = true;
+            Constants.LOG.error("Failed to read the upgrade config at '{}'. The file is left untouched and the built-in defaults are used for this session."
+                    + " Rods carrying an upgrade defined only in that file will be treated as unupgraded until the file is fixed.", this.configFile, exception);
         }
     }
 
-    /** 把当前配置写回磁盘，配置目录不存在时自动创建。 */
+    /** 把当前配置写回磁盘，配置目录不存在时自动创建；读取失败时不回写，避免覆盖用户配置。 */
     private void writeToDisk() {
 
         if (this.configFile == null) {
@@ -429,16 +451,22 @@ public class UpgradeConfig {
             return;
         }
 
+        if (this.readFailed) {
+
+            Constants.LOG.warn("Not writing '{}' back: the file could not be read, so rewriting it would drop the upgrades defined in it.", this.configFile);
+            return;
+        }
+
         this.configFile.getParentFile().mkdirs();
 
-        try (FileWriter writer = new FileWriter(this.configFile)) {
+        try (Writer writer = Files.newBufferedWriter(this.configFile.toPath(), StandardCharsets.UTF_8)) {
 
             Constants.GSON.toJson(this, writer);
         }
 
-        catch (Exception ignored) {
+        catch (Exception exception) {
 
-            // 文件写不进去时无能为力。
+            Constants.LOG.warn("Failed to write the upgrade config at '{}'.", this.configFile, exception);
         }
     }
 

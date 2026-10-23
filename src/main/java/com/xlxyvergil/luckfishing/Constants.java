@@ -42,6 +42,15 @@ public class Constants {
     @Nullable
     public static ResourceLocation getAppliedUpgrade(@Nullable ItemStack stack) {
 
+        final String raw = getRawUpgrade(stack);
+
+        return raw == null ? null : ResourceLocation.tryParse(raw);
+    }
+
+    /** 物品上记录的强化 id 原文（不解析），没有时为 null；排障时用来区分「没数据」和「数据解析不出来」。 */
+    @Nullable
+    public static String getRawUpgrade(@Nullable ItemStack stack) {
+
         if (stack == null || stack.isEmpty()) {
 
             return null;
@@ -54,6 +63,6 @@ public class Constants {
             return null;
         }
 
-        return ResourceLocation.tryParse(data.copyTag().getString(UPGRADE_TAG));
+        return data.copyTag().getString(UPGRADE_TAG);
     }
 }
