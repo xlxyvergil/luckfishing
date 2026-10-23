@@ -5,7 +5,9 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0,6.2)'
 }
 
-version = mod_version
+// 产物名带 MC 版本：luckfishing-1.0.4+1.20.1.jar。
+// 模组元数据（mods.toml）里的 version 仍取自 mod_version，两个版本号保持一致。
+version = "${mod_version}+${minecraft_version}"
 group = mod_group_id
 
 base {
