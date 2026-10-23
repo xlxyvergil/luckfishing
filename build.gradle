@@ -14,7 +14,9 @@ tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-version = mod_version
+// 产物名带 MC 版本：luckfishing-1.0.4+1.21.1.jar。
+// 模组元数据（neoforge.mods.toml）里的 version 仍取自 mod_version，两个版本号保持一致。
+version = "${mod_version}+${minecraft_version}"
 group = mod_group_id
 
 sourceSets.main.resources {
