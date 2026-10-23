@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import javax.annotation.Nullable;
 
 /**
  * 配置鱼竿可获得的铁砧强化，以及各强化解锁的实体池。
@@ -338,6 +339,31 @@ public class UpgradeConfig {
         this.rodTag = loaded.rodTag;
         this.rods = loaded.rods;
         this.upgrades = loaded.upgrades;
+    }
+
+    /** 序列化为与配置文件同结构的 JSON，供服务端把配置同步给客户端。 */
+    public String toJson() {
+
+        return Constants.COMPACT_GSON.toJson(this);
+    }
+
+    /** 从 {@link #toJson()} 产出的 JSON 还原一份配置；内容为空或无法解析时返回 null。 */
+    @Nullable
+    public static UpgradeConfig fromJson(String json) {
+
+        if (json == null || json.isEmpty()) {
+
+            return null;
+        }
+
+        try {
+
+            return Constants.COMPACT_GSON.fromJson(json, UpgradeConfig.class);
+        } catch (Exception exception) {
+
+            Constants.LOG.warn("Received an unreadable upgrade config from the server; keeping the local one.", exception);
+            return null;
+        }
     }
 
     /** 把配置文件里的值覆盖到默认值上，文件里没有的强化保留，避免手写条目被丢弃。 */

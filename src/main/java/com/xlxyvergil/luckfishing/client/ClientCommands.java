@@ -1,7 +1,9 @@
 package com.xlxyvergil.luckfishing.client;
 
 import com.xlxyvergil.luckfishing.Constants;
+import com.xlxyvergil.luckfishing.LuckFishing;
 import com.xlxyvergil.luckfishing.compat.jei.EntitySizeCache;
+import com.xlxyvergil.luckfishing.config.UpgradeConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -36,10 +38,16 @@ public final class ClientCommands {
             return 0;
         }
 
+        // 配置只在加载与手动重载时读盘，这里是唯一的手动重载入口。
+        final UpgradeConfig config = LuckFishing.getUpgradeConfig();
+        if (config != null) {
+            config.reload();
+        }
+
         final int added = EntitySizeCache.refresh();
         source.sendSuccess(() -> Component.translatable("command.luckfishing.reload.done", added), false);
 
-        // 资源重载会让 JEI 重建配方，从而经 LuckFishingJEIPlugin.registerRecipes 重读配置。
+        // 资源重载会让 JEI 重建配方，从而读到上面刚重读的配置。
         mc.reloadResourcePacks();
         return added;
     }

@@ -76,8 +76,7 @@ public class LuckFishingJEIPlugin implements IModPlugin {
             return;
         }
 
-        // JEI 重建配方列表（进入世界、/reload）时都会走到这里，重读文件即可让运行中的改动生效。
-        config.reload();
+        // 配置只在加载与 /luckf reload 时读盘，这里直接用内存中的配置建配方列表。
 
         final List<FishingLootRecipe> recipes = new ArrayList<>();
         for (Map.Entry<String, UpgradeConfig.Upgrade> entry : config.getUpgrades().entrySet()) {

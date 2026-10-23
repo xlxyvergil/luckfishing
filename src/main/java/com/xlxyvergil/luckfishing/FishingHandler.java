@@ -54,9 +54,6 @@ public class FishingHandler {
             return false;
         }
 
-        // 重新读取配置，改配置无需重启游戏。
-        config.reload();
-
         if (!config.isFishingRod(rod)) {
 
             return false;

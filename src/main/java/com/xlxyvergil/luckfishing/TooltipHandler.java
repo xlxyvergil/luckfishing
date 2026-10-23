@@ -1,6 +1,7 @@
 package com.xlxyvergil.luckfishing;
 
 import com.xlxyvergil.luckfishing.config.UpgradeConfig;
+import com.xlxyvergil.luckfishing.network.SyncedConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -27,7 +28,7 @@ public class TooltipHandler {
     @SubscribeEvent
     public static void onItemTooltip(ItemTooltipEvent event) {
 
-        final UpgradeConfig config = LuckFishing.getUpgradeConfig();
+        final UpgradeConfig config = clientConfig();
 
         if (config == null || !config.isFishingRod(event.getItemStack())) {
 
@@ -38,6 +39,17 @@ public class TooltipHandler {
 
         event.getToolTip().add(Component.translatable(STAGE_KEY, stageName(appliedUpgrade, config)).withStyle(ChatFormatting.GRAY));
         event.getToolTip().add(Component.translatable(CHANCE_KEY, config.chanceOf(appliedUpgrade)).withStyle(ChatFormatting.GRAY));
+    }
+
+    /**
+     * 优先用服务端同步来的配置，保证 tooltip 与服务端实际判定一致；
+     * 还没收到同步时退回本地配置（单机里两者本就是同一份）。
+     */
+    private static UpgradeConfig clientConfig() {
+
+        final UpgradeConfig synced = SyncedConfig.get();
+
+        return synced != null ? synced : LuckFishing.getUpgradeConfig();
     }
 
     /**

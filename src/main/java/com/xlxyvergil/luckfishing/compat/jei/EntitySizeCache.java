@@ -134,14 +134,13 @@ public final class EntitySizeCache {
         return measured;
     }
 
-    /** 重读配置并测量尚未缓存的实体，用于运行中改配置；返回新测量的实体数量。 */
+    /** 测量尚未缓存的实体尺寸，用于运行中改配置；配置由调用方（{@code /luckf reload}）先行重读，返回新测量的实体数量。 */
     public static int refresh() {
         final UpgradeConfig config = LuckFishing.getUpgradeConfig();
         if (config == null) {
             return 0;
         }
 
-        config.reload();
         ensureLoaded();
 
         int added = 0;

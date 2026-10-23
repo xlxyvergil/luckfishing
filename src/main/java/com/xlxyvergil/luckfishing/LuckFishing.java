@@ -2,6 +2,7 @@ package com.xlxyvergil.luckfishing;
 
 import com.xlxyvergil.luckfishing.compat.maid.MaidCompat;
 import com.xlxyvergil.luckfishing.config.UpgradeConfig;
+import com.xlxyvergil.luckfishing.network.NetworkHandler;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
@@ -14,6 +15,12 @@ import java.io.File;
 public class LuckFishing {
 
     private static UpgradeConfig upgradeConfig;
+
+    /** 网络通道必须在注册表锁定前建立，放在构造里最早执行。 */
+    public LuckFishing() {
+
+        NetworkHandler.register();
+    }
 
     /** 所有模组加载完成后触发，此时注册表已含全部实体，在这里生成并更新强化配置。 */
     @SubscribeEvent

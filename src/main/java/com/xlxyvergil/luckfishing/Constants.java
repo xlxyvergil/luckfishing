@@ -16,4 +16,7 @@ public class Constants {
 
     /** 读写强化配置共用的 GSON，只序列化带 @Expose 的字段。 */
     public static final Gson GSON = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().setPrettyPrinting().create();
+
+    /** 网络同步使用的 GSON，字段与配置文件一致但不做缩进，减小包体。 */
+    public static final Gson COMPACT_GSON = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
 }

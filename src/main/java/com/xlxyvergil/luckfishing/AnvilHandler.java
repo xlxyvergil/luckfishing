@@ -25,9 +25,6 @@ public class AnvilHandler {
             return;
         }
 
-        // 重新读取配置，改配置无需重启游戏。
-        config.reload();
-
         if (!config.isFishingRod(left)) {
 
             return;
